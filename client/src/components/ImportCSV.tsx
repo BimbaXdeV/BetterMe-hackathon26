@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import Papa from 'papaparse'; // Добавь этот импорт
 
 interface Props {
   onSuccess?: () => void;
@@ -29,30 +30,52 @@ export const ImportCSV = ({ onSuccess }: Props) => {
     if (f && f.name.endsWith('.csv')) handleFile(f);
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
     setLoading(true);
-    try {
-      await axios.post('http://localhost:3000/orders/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setSuccess(true);
-      setFile(null);
-      alert('Файл успешно загружен и обработан!');
-      onSuccess?.();
-    } catch (error) {
-      console.error('Ошибка при загрузке:', error);
-      alert('Произошла ошибка при импорте');
-    } finally {
-      setLoading(false);
-    }
+
+    // 1. Читаем CSV файл прямо на клиенте
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          // 2. Превращаем данные в формат, который ждет наш бэкенд
+          const formattedOrders = results.data.map((row: any) => ({
+            // Обрабатываем и маленькие, и большие буквы в названиях колонок
+            latitude: parseFloat(row.latitude || row.Latitude),
+            longitude: parseFloat(row.longitude || row.Longitude),
+            subtotal: parseFloat(row.subtotal || row.Subtotal),
+            // Если времени нет, ставим текущее
+            timestamp: row.timestamp || row.Timestamp || new Date().toISOString()
+          })).filter(order => !isNaN(order.latitude) && !isNaN(order.longitude));
+
+          console.log(`Отправка ${formattedOrders.length} строк на сервер...`);
+
+          // 3. Отправляем JSON-массив на порт 8000
+          const response = await axios.post('http://localhost:8000/orders/bulk', formattedOrders);
+          
+          setSuccess(true);
+          setFile(null);
+          onSuccess?.();
+          alert(`Успешно! Обработано ${response.data.length} заказов.`);
+        } catch (error: any) {
+          console.error('Ошибка импорта:', error.response?.data || error.message);
+          alert('Ошибка при обработке данных на сервере. Проверь консоль.');
+        } finally {
+          setLoading(false);
+        }
+      },
+      error: (err) => {
+        console.error('Ошибка парсинга файла:', err);
+        setLoading(false);
+        alert('Не удалось прочитать CSV файл');
+      }
+    });
   };
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
-      {/* Title */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">
           01
@@ -62,7 +85,6 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         </h2>
       </div>
 
-      {/* Drop Zone */}
       <div
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -111,7 +133,6 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         )}
       </div>
 
-      {/* Upload Button */}
       <button
         onClick={handleUpload}
         disabled={!file || loading}
@@ -126,12 +147,12 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Обработка...
+            Обработка 11к строк...
           </>
         ) : success ? (
           <>
             <CheckCircle2 className="w-4 h-4" />
-            Загружено!
+            Готово!
           </>
         ) : (
           <>
