@@ -52,7 +52,6 @@ async def calculate_order_tax(lat: float, lon: float, subtotal: float) -> dict:
         tax_amount = round(subtotal * tax_info["composite_rate"], 2)
         total_amount = round(subtotal + tax_amount, 2)
 
-        # возвращаем готовый словарь
         return {
             "composite_tax_rate": tax_info["composite_rate"],
             "tax_amount": tax_amount,
