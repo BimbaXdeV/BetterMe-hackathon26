@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import Papa from 'papaparse'; // парсер
 
 interface Props {
   onSuccess?: () => void;
@@ -29,30 +30,65 @@ export const ImportCSV = ({ onSuccess }: Props) => {
     if (f && f.name.endsWith('.csv')) handleFile(f);
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
     setLoading(true);
-    try {
-      await axios.post('http://localhost:3000/orders/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setSuccess(true);
-      setFile(null);
-      alert('Файл успешно загружен и обработан!');
-      onSuccess?.();
-    } catch (error) {
-      console.error('Ошибка при загрузке:', error);
-      alert('Произошла ошибка при импорте');
-    } finally {
-      setLoading(false);
-    }
+
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+         
+          const formattedOrders = results.data.map((row: any) => {
+            // Поиск ключей 
+            const findKey = (name: string) => 
+              Object.keys(row).find(k => k.toLowerCase() === name.toLowerCase());
+            
+            return {
+              latitude: parseFloat(row[findKey('latitude') || ''] || 0),
+              longitude: parseFloat(row[findKey('longitude') || ''] || 0),
+              subtotal: parseFloat(row[findKey('subtotal') || ''] || 0),
+              timestamp: row[findKey('timestamp') || ''] || new Date().toISOString()
+            };
+          }).filter(o => o.latitude !== 0);
+
+          if (formattedOrders.length === 0) {
+            throw new Error("Файл пуст или неверные заголовки (нужны: latitude, longitude, subtotal)");
+          }
+
+          //   по 2000 строк
+         
+          const chunkSize = 2000;
+          for (let i = 0; i < formattedOrders.length; i += chunkSize) {
+            const chunk = formattedOrders.slice(i, i + chunkSize);
+            
+           
+            await axios.post('http://localhost:8000/orders/bulk', chunk);
+            
+            console.log(`Загружено: ${Math.min(i + chunkSize, formattedOrders.length)} из ${formattedOrders.length}`);
+          }
+
+          setSuccess(true);
+          setFile(null);
+          alert(`Успешно! Обработано ${formattedOrders.length} строк.`);
+          onSuccess?.();
+        } catch (error: any) {
+          console.error('Ошибка импорта:', error);
+          const errorMsg = error.response?.data?.detail 
+            ? JSON.stringify(error.response.data.detail) 
+            : error.message;
+          alert("Ошибка импорта: " + errorMsg);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
-      {/* Title */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">
           01
@@ -62,7 +98,6 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         </h2>
       </div>
 
-      {/* Drop Zone */}
       <div
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -111,7 +146,6 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         )}
       </div>
 
-      {/* Upload Button */}
       <button
         onClick={handleUpload}
         disabled={!file || loading}
@@ -126,12 +160,12 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Обработка...
+            Идет обработка 11к строк...
           </>
         ) : success ? (
           <>
             <CheckCircle2 className="w-4 h-4" />
-            Загружено!
+            Готово!
           </>
         ) : (
           <>
@@ -143,3 +177,13 @@ export const ImportCSV = ({ onSuccess }: Props) => {
     </div>
   );
 };
+
+{/*###########################################################################################
+#                                                                                         #
+#   ██████╗██╗   ██╗██████╗ ███████╗██████╗  ██████╗██╗  ██╗██╗   ██╗██████╗              #
+#  ██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██║   ██║██╔══██╗             #
+#  ██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝██║     ███████║██║   ██║██████╔╝             #
+#  ██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗██║     ██╔══██║██║   ██║██╔══██╗             #
+#  ╚██████╗   ██║   ██████╔╝███████╗██║  ██║╚██████╗██║  ██║╚██████╔╝██████╔╝             #
+#   ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝              #
+###########################################################################################*/}

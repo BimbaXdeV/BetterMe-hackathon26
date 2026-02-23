@@ -2,7 +2,7 @@ import sys
 import os
 import asyncio
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +13,7 @@ class Order(BaseModel):
     latitude: float
     longitude: float
     subtotal: float
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[Union[datetime, str]] = None
 
 class OrderResponse(Order):
     id: int
@@ -26,7 +26,6 @@ class OrderResponse(Order):
     special_rates: float
     jurisdictions: Optional[str] = None
 
-# --- ИМПОРТ СЕРВИСА ---
 try:
     from tax_service import calculate_order_tax
 except ImportError:
@@ -58,12 +57,15 @@ async def create_order(order: Order):
     try:
         tax_data = await calculate_order_tax(order.latitude, order.longitude, order.subtotal)
         
+        # Проверка даты
+        order_time = order.timestamp if isinstance(order.timestamp, datetime) else datetime.now()
+
         new_order_data = {
             "id": len(orders_db) + 1,
             "latitude": order.latitude,
             "longitude": order.longitude,
             "subtotal": order.subtotal,
-            "timestamp": order.timestamp or datetime.now(),
+            "timestamp": order_time,
             "composite_tax_rate": tax_data["composite_tax_rate"],
             "tax_amount": tax_data["tax_amount"],
             "total_amount": tax_data["total_amount"],
@@ -83,33 +85,37 @@ async def create_order(order: Order):
 async def create_orders_bulk(orders: List[Order]):
     """
     Ускоренная обработка больших файлов.
-    Обрабатывает заказы пачками по 50 штук одновременно.
+    Обрабатывает заказы пачками одновременно.
     """
     print(f"--- Начинаю импорт {len(orders)} строк ---")
     
     results = []
-    chunk_size = 50  # Размер пачки для параллельной обработки
+    chunk_size = 100 
     
     for i in range(0, len(orders), chunk_size):
         chunk = orders[i : i + chunk_size]
         
-        # Создаем список задач для текущей пачки
+        # Создаем задачи
         tasks = [calculate_order_tax(o.latitude, o.longitude, o.subtotal) for o in chunk]
         
-        # Запускаем расчеты пачки параллельно
+        # Выполняем пачку
         chunk_results = await asyncio.gather(*tasks, return_exceptions=True)
         
         for order, tax_data in zip(chunk, chunk_results):
-            if isinstance(tax_data, Exception):
+            # Если в конкретной строке ошибка — скипаем её, а не весь файл
+            if isinstance(tax_data, Exception) or not tax_data:
                 continue
             
+            # Валидация времени
+            order_time = order.timestamp if isinstance(order.timestamp, datetime) else datetime.now()
+
             new_id = len(orders_db) + 1
             processed_order = {
                 "id": new_id,
                 "latitude": order.latitude,
                 "longitude": order.longitude,
                 "subtotal": order.subtotal,
-                "timestamp": order.timestamp or datetime.now(),
+                "timestamp": order_time,
                 "composite_tax_rate": tax_data["composite_tax_rate"],
                 "tax_amount": tax_data["tax_amount"],
                 "total_amount": tax_data["total_amount"],
@@ -122,10 +128,23 @@ async def create_orders_bulk(orders: List[Order]):
             orders_db.append(processed_order)
             results.append(processed_order)
         
-        print(f"Обработано: {min(i + chunk_size, len(orders))} из {len(orders)}")
+        # прогресс в консоль раз в 1000 строк
+        if (i + chunk_size) % 1000 == 0 or i + chunk_size >= len(orders):
+            print(f"Прогресс: {min(i + chunk_size, len(orders))} из {len(orders)}")
 
-    print(f"--- Импорт завершен. Всего в базе: {len(orders_db)} ---")
+    print(f"--- Импорт завершен успешно. Всего заказов: {len(orders_db)} ---")
     return results
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
+    
+    
+###########################################################################################
+#                                                                                         #
+#   ██████╗██╗   ██╗██████╗ ███████╗██████╗  ██████╗██╗  ██╗██╗   ██╗██████╗              #
+#  ██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██║   ██║██╔══██╗             #
+#  ██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝██║     ███████║██║   ██║██████╔╝             #
+#  ██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗██║     ██╔══██║██║   ██║██╔══██╗             #
+#  ╚██████╗   ██║   ██████╔╝███████╗██║  ██║╚██████╗██║  ██║╚██████╔╝██████╔╝             #
+#   ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝              #
+###########################################################################################
