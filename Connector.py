@@ -1,5 +1,4 @@
 import aiosqlite
-import asyncio
 import logging
 
 class AsyncSQLiteConnector:
@@ -53,16 +52,3 @@ class AsyncSQLiteConnector:
         async with self.connection.execute(sql, parameters or ()) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
-
-lol = AsyncSQLiteConnector()
-async def main():
-    await lol.connect()
-    await lol.execute_query('''CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            coefficient INTEGER DEFAULT 1
-        )''')
-    await lol.disconnect()
-
-if __name__ == "__main__":
-    asyncio.run(main())
