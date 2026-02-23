@@ -4,6 +4,7 @@ import { ImportCSV } from './components/ImportCSV';
 import { ManualOrderForm } from './components/ManualOrderForm';
 import { OrdersTable } from './components/OrdersTable';
 import type { Order } from './types';
+import { Toaster } from 'sonner';
 
 function App() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -27,6 +28,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <Toaster theme="dark" position="bottom-right" richColors />
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">

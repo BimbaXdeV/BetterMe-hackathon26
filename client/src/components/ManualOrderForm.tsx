@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { MapPin, DollarSign, Calculator, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { OrderInput, Order } from '../types';
 
 interface Props {
@@ -14,20 +15,31 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
     subtotal: 0,
     timestamp: new Date().toISOString(),
   });
+  
   const [result, setResult] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // В Sonner создаем лоадер, который вернет ID для последующего обновления
+    const toastId = toast.loading('Рассчитываем налог и сохраняем...');
+    
     try {
-      const response = await axios.post('http://localhost:3000/orders', formData);
+      // ИСПРАВЛЕНО: порт изменен на 8000, чтобы совпадать с App.tsx
+      const response = await axios.post('http://localhost:8000/orders', formData);
+      
       setResult(response.data);
-      alert('Заказ успешно создан и налог рассчитан!');
+      
+      // Обновляем тот же самый тост успехом
+      toast.success('Заказ успешно создан!', { id: toastId });
+      
       onSuccess?.();
     } catch (error) {
       console.error('Ошибка:', error);
-      alert('Не удалось рассчитать налог');
+      // Обновляем тот же самый тост ошибкой
+      toast.error('Не удалось создать заказ. Проверьте соединение с API.', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -42,7 +54,6 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
-      {/* Title */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">
           02
@@ -53,7 +64,6 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Coords row */}
         <div className="grid grid-cols-2 gap-3">
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
@@ -63,7 +73,7 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
               placeholder="Latitude"
               className={inputClass + ' pl-9'}
               onChange={(e) =>
-                setFormData({ ...formData, latitude: parseFloat(e.target.value) })
+                setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })
               }
             />
           </div>
@@ -75,21 +85,21 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
               placeholder="Longitude"
               className={inputClass + ' pl-9'}
               onChange={(e) =>
-                setFormData({ ...formData, longitude: parseFloat(e.target.value) })
+                setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })
               }
             />
           </div>
         </div>
 
-        {/* Subtotal */}
         <div className="relative">
           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
           <input
             type="number"
+            step="any"
             placeholder="Subtotal"
             className={inputClass + ' pl-9'}
             onChange={(e) =>
-              setFormData({ ...formData, subtotal: parseFloat(e.target.value) })
+              setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })
             }
           />
         </div>
@@ -114,9 +124,8 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
         </button>
       </form>
 
-      {/* Result */}
       {result && (
-        <div className="mt-2 rounded-lg bg-zinc-800/80 border border-zinc-700 overflow-hidden">
+        <div className="mt-2 rounded-lg bg-zinc-800/80 border border-zinc-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="px-4 py-2 border-b border-zinc-700 bg-zinc-800">
             <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest">
               Результат расчёта
@@ -124,9 +133,9 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
           </div>
           <div className="grid grid-cols-3 divide-x divide-zinc-700">
             {[
-              { label: 'Ставка', value: `${(result.composite_tax_rate * 100).toFixed(3)}%` },
-              { label: 'Налог', value: `$${result.tax_amount.toFixed(2)}` },
-              { label: 'Итого', value: `$${result.total_amount.toFixed(2)}` },
+              { label: 'Ставка', value: `${((result.composite_tax_rate || 0) * 100).toFixed(3)}%` },
+              { label: 'Налог', value: `$${(result.tax_amount || 0).toFixed(2)}` },
+              { label: 'Итого', value: `$${(result.total_amount || 0).toFixed(2)}` },
             ].map((item) => (
               <div key={item.label} className="px-4 py-3 text-center">
                 <p className="text-xs text-zinc-500 font-mono mb-1">{item.label}</p>
