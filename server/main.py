@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from auth import router as auth_router
 
 # --- МОДЕЛИ ---
 class Order(BaseModel):
@@ -50,6 +51,8 @@ except ImportError:
     from tax_service import calculate_order_tax, calculate_bulk_taxes
 
 app = FastAPI(title="BetterMe Tax API")
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
