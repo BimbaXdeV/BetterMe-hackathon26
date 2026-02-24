@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { UploadCloud, FileText, CheckCircle2, Loader2 } from 'lucide-react';
-import Papa from 'papaparse'; // парсер
+import Papa from 'papaparse'; 
+import { toast } from 'sonner';
 
 interface Props {
   onSuccess?: () => void;
@@ -12,11 +13,19 @@ export const ImportCSV = ({ onSuccess }: Props) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [dragging, setDragging] = useState(false);
+  
+  const [rowCount, setRowCount] = useState<number>(0);
+  const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (f: File) => {
     setFile(f);
     setSuccess(false);
+    setRowCount(0);
+    setUploadedCount(0);
+    setTimeLeft('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,16 +42,14 @@ export const ImportCSV = ({ onSuccess }: Props) => {
   const handleUpload = () => {
     if (!file) return;
     setLoading(true);
+    const startTime = Date.now();
 
-    
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-         
           const formattedOrders = results.data.map((row: any) => {
-            // Поиск ключей 
             const findKey = (name: string) => 
               Object.keys(row).find(k => k.toLowerCase() === name.toLowerCase());
             
@@ -54,93 +61,88 @@ export const ImportCSV = ({ onSuccess }: Props) => {
             };
           }).filter(o => o.latitude !== 0);
 
-          if (formattedOrders.length === 0) {
-            throw new Error("Файл пуст или неверные заголовки (нужны: latitude, longitude, subtotal)");
-          }
+          const total = formattedOrders.length;
+          if (total === 0) throw new Error("Файл пуст или неверные заголовки");
 
-          //   по 2000 строк
-         
+          setRowCount(total);
+
           const chunkSize = 2000;
-          for (let i = 0; i < formattedOrders.length; i += chunkSize) {
+          for (let i = 0; i < total; i += chunkSize) {
             const chunk = formattedOrders.slice(i, i + chunkSize);
-            
-           
             await axios.post('http://localhost:8000/orders/bulk', chunk);
             
-            console.log(`Загружено: ${Math.min(i + chunkSize, formattedOrders.length)} из ${formattedOrders.length}`);
+            const currentUploaded = Math.min(i + chunkSize, total);
+            setUploadedCount(currentUploaded);
+
+            const timeElapsed = Date.now() - startTime;
+            const timePerItem = timeElapsed / currentUploaded;
+            const remainingItems = total - currentUploaded;
+            const secondsRemaining = Math.ceil((remainingItems * timePerItem) / 1000);
+
+            setTimeLeft(secondsRemaining > 0 ? `~${secondsRemaining} сек.` : 'финалим...');
           }
+
+          toast.success('Импорт завершен', {
+            description: `Данные загружены в базу.`,
+            style: { background: '#18181b', color: '#10b981', border: '1px solid #065f46' }
+          });
 
           setSuccess(true);
           setFile(null);
-          alert(`Успешно! Обработано ${formattedOrders.length} строк.`);
           onSuccess?.();
         } catch (error: any) {
-          console.error('Ошибка импорта:', error);
-          const errorMsg = error.response?.data?.detail 
-            ? JSON.stringify(error.response.data.detail) 
-            : error.message;
-          alert("Ошибка импорта: " + errorMsg);
+          toast.error('Ошибка импорта', { description: error.message });
         } finally {
           setLoading(false);
+          setTimeLeft('');
         }
       }
     });
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+    <div className="bg-zinc-950 border border-emerald-900/30 rounded-xl p-6 space-y-4 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">
-          01
-        </span>
-        <h2 className="text-sm font-semibold text-zinc-300 tracking-wide uppercase">
-          Импорт из CSV
+        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <h2 className="text-xs font-bold text-emerald-500/80 tracking-[0.2em] uppercase">
+          CSV_DATA_INJECTION
         </h2>
       </div>
 
       <div
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onClick={() => !loading && inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); !loading && setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         className={`
-          relative cursor-pointer rounded-lg border-2 border-dashed transition-all duration-200 p-8
+          relative cursor-pointer rounded-lg border-2 border-dashed transition-all duration-300 p-8
           flex flex-col items-center justify-center gap-3 text-center
           ${dragging
-            ? 'border-emerald-400 bg-emerald-400/5'
+            ? 'border-emerald-400 bg-emerald-400/10'
             : file
-            ? 'border-zinc-600 bg-zinc-800/50'
-            : 'border-zinc-700 hover:border-zinc-500 bg-zinc-800/30 hover:bg-zinc-800/50'
+            ? 'border-emerald-500/50 bg-emerald-500/5'
+            : 'border-zinc-800 hover:border-emerald-500/40 bg-zinc-900/50 hover:bg-emerald-500/5'
           }
+          ${loading ? 'opacity-40 cursor-not-allowed' : ''}
         `}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv"
-          onChange={handleFileChange}
-          disabled={loading}
-          className="hidden"
-        />
+        <input ref={inputRef} type="file" accept=".csv" onChange={handleFileChange} disabled={loading} className="hidden" />
 
         {file ? (
           <>
-            <FileText className="w-8 h-8 text-emerald-400" />
-            <div>
-              <p className="text-sm font-medium text-zinc-200">{file.name}</p>
-              <p className="text-xs text-zinc-500 font-mono mt-0.5">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
+            <FileText className="w-10 h-10 text-emerald-400" />
+            <div className="space-y-1">
+              <p className="text-sm font-mono text-emerald-100">{file.name}</p>
+              <p className="text-[10px] text-emerald-500/60 font-mono">{(file.size / 1024).toFixed(1)} KB</p>
             </div>
           </>
         ) : (
           <>
-            <UploadCloud className={`w-8 h-8 transition-colors ${dragging ? 'text-emerald-400' : 'text-zinc-600'}`} />
+            <UploadCloud className={`w-10 h-10 transition-colors ${dragging ? 'text-emerald-400' : 'text-emerald-900'}`} />
             <div>
-              <p className="text-sm text-zinc-400">
-                Перетащи CSV или <span className="text-emerald-400 underline">выбери файл</span>
+              <p className="text-sm text-zinc-500">
+                Перетащи файл или <span className="text-emerald-500 hover:text-emerald-400 underline decoration-emerald-500/30">выбери путь</span>
               </p>
-              <p className="text-xs text-zinc-600 font-mono mt-1">.csv · до 50 MB</p>
             </div>
           </>
         )}
@@ -150,40 +152,32 @@ export const ImportCSV = ({ onSuccess }: Props) => {
         onClick={handleUpload}
         disabled={!file || loading}
         className={`
-          w-full py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2
+          w-full py-4 rounded-lg text-xs font-black transition-all duration-300 flex items-center justify-center gap-3 uppercase tracking-[0.1em]
           ${file && !loading
-            ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 cursor-pointer shadow-lg shadow-emerald-500/20'
-            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+            ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-[0.98]'
+            : 'bg-zinc-900 text-zinc-700 cursor-not-allowed border border-zinc-800'
           }
         `}
       >
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Идет обработка 11к строк...
+            <span className="font-mono">
+              PUSHING: {uploadedCount}/{rowCount} <span className="opacity-60">{timeLeft}</span>
+            </span>
           </>
         ) : success ? (
           <>
             <CheckCircle2 className="w-4 h-4" />
-            Готово!
+            SUCCESS_LOADED
           </>
         ) : (
           <>
             <UploadCloud className="w-4 h-4" />
-            Загрузить и рассчитать
+            EXECUTE_IMPORT
           </>
         )}
       </button>
     </div>
   );
 };
-
-{/*###########################################################################################
-#                                                                                         #
-#   ██████╗██╗   ██╗██████╗ ███████╗██████╗  ██████╗██╗  ██╗██╗   ██╗██████╗              #
-#  ██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██║   ██║██╔══██╗             #
-#  ██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝██║     ███████║██║   ██║██████╔╝             #
-#  ██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗██║     ██╔══██║██║   ██║██╔══██╗             #
-#  ╚██████╗   ██║   ██████╔╝███████╗██║  ██║╚██████╗██║  ██║╚██████╔╝██████╔╝             #
-#   ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝              #
-###########################################################################################*/}
