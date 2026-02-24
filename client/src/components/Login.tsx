@@ -20,8 +20,11 @@ export const Login = ({ onLogin }: { onLogin: (status: boolean) => void }) => {
       if (response.data.success) {
         onLogin(true);
       }
+      console.log(response);
+      console.log(response.data.success);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Ошибка авторизации');
+      console.log('not success')
+      setError(err.response?.data?.detail || 'Помилка авторизації');
     }
   };
 
@@ -32,14 +35,14 @@ export const Login = ({ onLogin }: { onLogin: (status: boolean) => void }) => {
         
         {error && <p style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center' }}>{error}</p>}
         
-        <input type="text" placeholder="Логин" value={username} onChange={(e) => setUsername(e.target.value)}
+        <input type="text" placeholder="Логін" value={username} onChange={(e) => setUsername(e.target.value)}
           style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #3f3f46', background: 'transparent', color: 'white' }} />
         
         <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)}
           style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #3f3f46', background: 'transparent', color: 'white' }} />
         
         <button type="submit" style={{ padding: '0.7rem', borderRadius: '4px', border: 'none', background: '#10b981', fontWeight: 'bold', cursor: 'pointer' }}>
-          Инициализировать сессию
+          Зареєструватися
         </button>
       </form>
     </div>

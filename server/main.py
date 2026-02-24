@@ -52,7 +52,7 @@ except ImportError:
 
 app = FastAPI(title="BetterMe Tax API")
 
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 app.add_middleware(
     CORSMiddleware,
