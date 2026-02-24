@@ -1,6 +1,7 @@
 import sys
 import os
 import asyncio
+import pandas as pd
 from datetime import datetime
 from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel
@@ -70,14 +71,37 @@ def root():
 @app.get('/orders', response_model=PaginatedOrdersResponse)
 async def get_orders(
     page: int = Query(1, ge=1, description="Номер страницы"),
-    limit: int = Query(50, ge=1, le=100, description="Количество заказов на страницу")
+    limit: int = Query(50, ge=1, le=100, description="Количество заказов на страницу"),
+    county: Optional[str] = None,
+    min_subtotal: Optional[float] = None,
+    min_tax: Optional[float] = None,
+    min_rate: Optional[float] = None
 ):
+    df = pd.DataFrame(orders_db)
+
+    # Создаем маску (набор условий)
+    mask = True
+
+    if None != county:
+        mask &= df['jurisdictions'].str.contains(county)
+    if None != min_subtotal:
+        mask &= df['subtotal'] >= min_subtotal
+    if None != min_tax:
+        mask &= df['tax_amount'] >= min_tax
+    if None != min_rate:
+        mask &= df['composite_tax_rate'] >= min_rate
+
+    try:
+        filtered_orders = df[mask].to_dict('records')
+    except:
+        filtered_orders = orders_db
+
     """Получение списка заказов с пагинацией."""
-    total_count = len(orders_db)
+    total_count = len(filtered_orders)
     start = (page - 1) * limit
     end = start + limit
     
-    paginated_items = orders_db[start:end]
+    paginated_items = filtered_orders[start:end]
     total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
 
     return {
