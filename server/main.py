@@ -90,7 +90,7 @@ async def create_orders_bulk(orders: List[Order]):
     print(f"--- Начинаю импорт {len(orders)} строк ---")
     
     results = []
-    chunk_size = 100
+    chunk_size = 100 
     
     for i in range(0, len(orders), chunk_size):
         chunk = orders[i : i + chunk_size]
@@ -130,7 +130,7 @@ async def create_orders_bulk(orders: List[Order]):
         
         # прогресс в консоль раз в 1000 строк
         if (i + chunk_size) % 1000 == 0 or i + chunk_size >= len(orders):
-            print(f"Прогресс: {min(i + chunk_size, len(orders))} из {len(orders)} (chunk: {chunk_size})")
+            print(f"Прогресс: {min(i + chunk_size, len(orders))} из {len(orders)}")
 
     print(f"--- Импорт завершен успешно. Всего заказов: {len(orders_db)} ---")
     return results
