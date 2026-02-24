@@ -69,7 +69,7 @@ export const ImportCSV = ({ onSuccess }: Props) => {
           const chunkSize = 5000; 
           for (let i = 0; i < total; i += chunkSize) {
             const chunk = formattedOrders.slice(i, i + chunkSize);
-            await axios.post('http://localhost:8000/orders/bulk', chunk);
+           await axios.post('http://localhost:8000/orders/import', chunk);
             
             const currentUploaded = Math.min(i + chunkSize, total);
             setUploadedCount(currentUploaded);
