@@ -2,9 +2,9 @@ import sys
 import os
 import asyncio
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -26,6 +26,14 @@ class OrderResponse(Order):
     special_rates: float
     jurisdictions: Optional[str] = None
 
+# Модель для ответа с пагинацией
+class PaginatedOrdersResponse(BaseModel):
+    orders: List[OrderResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
 # --- ИМПОРТЫ ЛОГИКИ ---
 try:
     from tax_service import calculate_order_tax, calculate_bulk_taxes
@@ -43,15 +51,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# имитация БД
 orders_db = []
 
 @app.get('/')
 def root():
-    return {'status': 'BetterMe API is running', 'orders_count': len(orders_db)}
+    """Возвращает общую статистику по всей базе заказов."""
+    total_tax = sum(o["tax_amount"] for o in orders_db)
+    total_revenue = sum(o["total_amount"] for o in orders_db)
+    
+    return {
+        'status': 'BetterMe API is running', 
+        'orders_count': len(orders_db),
+        'total_tax': round(total_tax, 2),
+        'total_revenue': round(total_revenue, 2)
+    }
 
-@app.get('/orders', response_model=List[OrderResponse])
-async def get_orders():
-    return orders_db
+@app.get('/orders', response_model=PaginatedOrdersResponse)
+async def get_orders(
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    limit: int = Query(50, ge=1, le=100, description="Количество заказов на страницу")
+):
+    """Получение списка заказов с пагинацией."""
+    total_count = len(orders_db)
+    start = (page - 1) * limit
+    end = start + limit
+    
+    paginated_items = orders_db[start:end]
+    total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
+
+    return {
+        "orders": paginated_items,
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 @app.post('/orders', response_model=OrderResponse)
 async def create_order(order: Order):
@@ -86,7 +121,6 @@ async def create_orders_bulk(orders: List[Order]):
     print(f"--- Старт массового импорта: {len(orders)} строк ---")
     start_time = datetime.now()
     
-    # Подготовка данных для Spatial Join
     orders_list = [o.dict() for o in orders]
     
     try:

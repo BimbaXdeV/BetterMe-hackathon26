@@ -5,7 +5,8 @@ import Papa from 'papaparse';
 import { toast } from 'sonner';
 
 interface Props {
-  onSuccess?: () => void;
+  // Вызывается после успешного импорта, чтобы обновить таблицу и сбросить ее на 1 страницу [cite: 28]
+  onSuccess?: () => void; 
 }
 
 export const ImportCSV = ({ onSuccess }: Props) => {
@@ -66,7 +67,8 @@ export const ImportCSV = ({ onSuccess }: Props) => {
 
           setRowCount(total);
 
-          const chunkSize = 2000;
+          // Размер чанка увеличен до 5000 для оптимизированного бэкенда 
+          const chunkSize = 5000; 
           for (let i = 0; i < total; i += chunkSize) {
             const chunk = formattedOrders.slice(i, i + chunkSize);
             await axios.post('http://localhost:8000/orders/bulk', chunk);
@@ -83,13 +85,16 @@ export const ImportCSV = ({ onSuccess }: Props) => {
           }
 
           toast.success('Импорт завершен', {
-            description: `Данные загружены в базу.`,
+            description: `${total} записей успешно обработано.`,
             style: { background: '#18181b', color: '#10b981', border: '1px solid #065f46' }
           });
 
           setSuccess(true);
           setFile(null);
-          onSuccess?.();
+          
+          // Триггер для OrdersTable
+          if (onSuccess) onSuccess(); 
+
         } catch (error: any) {
           toast.error('Ошибка импорта', { description: error.message });
         } finally {
