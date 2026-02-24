@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8a2a8bab-abb5-453c-b128-3c228d837cd3" name="Changes" comment="Поменял метод определения округа, оптимизировал подсчет больших файлов" />
+    <list default="true" id="8a2a8bab-abb5-453c-b128-3c228d837cd3" name="Changes" comment="Поменял метод определения округа, оптимизировал подсчет больших файлов">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -20,7 +22,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="frontend-dev" />
+        <entry key="$PROJECT_DIR$" value="Vanya`s-Branch" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -89,6 +91,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="venv" />
-    <option name="LAST_COMMIT_MESSAGE" value="venv" />
+    <MESSAGE value="Поменял метод определения округа, оптимизировал подсчет больших файлов" />
+    <option name="LAST_COMMIT_MESSAGE" value="Поменял метод определения округа, оптимизировал подсчет больших файлов" />
   </component>
 </project>
