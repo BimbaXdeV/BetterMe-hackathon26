@@ -4,17 +4,34 @@ import math
 import geopandas as gpd
 from shapely.geometry import Point
 
+_cache = {
+    "gdf": None,
+    "json": None
+}
+_lock = asyncio.Lock()
+_lock = asyncio.Lock()
 
-try:
-    with open('ny_taxes.json', 'r', encoding='utf-8') as f:
-        TAX_DATA = json.load(f)
-except:
-    TAX_DATA = {}
 
-# Загружаем карту округов
-ny = gpd.read_file('new-york-counties.geojson')
+async def get_all_data(gdf_path, json_path):
+    async with _lock:
+        # Загружаем GeoPandas, если еще не загружен
+        if _cache["gdf"] is None:
+            _cache["gdf"] = await asyncio.to_thread(gpd.read_file, gdf_path)
+            print('Читаем геофайл')
 
-async def calculate_order_tax(lat: float, lon: float, subtotal: float, geojson_path = 'new-york-counties.geojson') -> dict:
+        # Загружаем JSON, если еще не загружен
+        if _cache["json"] is None:
+            def load_json():
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    print('Читаем джсон')
+                    return json.load(f)
+
+            _cache["json"] = await asyncio.to_thread(load_json)
+
+    return _cache["gdf"], _cache["json"]
+
+async def calculate_order_tax(lat: float, lon: float, subtotal: float) -> dict:
+    ny, TAX_DATA = await get_all_data('new-york-counties.geojson', 'ny_taxes.json')
     # Создаем точку из координат
     point = Point(lon, lat)
 
@@ -24,6 +41,8 @@ async def calculate_order_tax(lat: float, lon: float, subtotal: float, geojson_p
     for index, row in ny.iterrows():
         if row['geometry'].contains(point):
             county_name = row['name'][:-7]
+
+    print(point, county_name)
 
     # данные из JSON
     tax_info = TAX_DATA.get(county_name, {
