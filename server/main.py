@@ -26,11 +26,12 @@ class OrderResponse(Order):
     special_rates: float
     jurisdictions: Optional[str] = None
 
+# --- ИМПОРТЫ ЛОГИКИ ---
 try:
-    from tax_service import calculate_order_tax
+    from tax_service import calculate_order_tax, calculate_bulk_taxes
 except ImportError:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from tax_service import calculate_order_tax
+    from tax_service import calculate_order_tax, calculate_bulk_taxes
 
 app = FastAPI(title="BetterMe Tax API")
 
@@ -54,10 +55,9 @@ async def get_orders():
 
 @app.post('/orders', response_model=OrderResponse)
 async def create_order(order: Order):
+    """Создание одного заказа (из ручной формы)."""
     try:
         tax_data = await calculate_order_tax(order.latitude, order.longitude, order.subtotal)
-        
-        # Проверка даты
         order_time = order.timestamp if isinstance(order.timestamp, datetime) else datetime.now()
 
         new_order_data = {
@@ -78,73 +78,46 @@ async def create_order(order: Order):
         orders_db.append(new_order_data)
         return new_order_data
     except Exception as e:
-        print(f"Error creating order: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/orders/bulk', response_model=List[OrderResponse])
 async def create_orders_bulk(orders: List[Order]):
-    """
-    Ускоренная обработка больших файлов.
-    Обрабатывает заказы пачками одновременно.
-    """
-    print(f"--- Начинаю импорт {len(orders)} строк ---")
+    """Массовый импорт с использованием векторизации GeoPandas."""
+    print(f"--- Старт массового импорта: {len(orders)} строк ---")
+    start_time = datetime.now()
     
-    results = []
-    chunk_size = 100 
+    # Подготовка данных для Spatial Join
+    orders_list = [o.dict() for o in orders]
     
-    for i in range(0, len(orders), chunk_size):
-        chunk = orders[i : i + chunk_size]
-        
-        # Создаем задачи
-        tasks = [calculate_order_tax(o.latitude, o.longitude, o.subtotal) for o in chunk]
-        
-        # Выполняем пачку
-        chunk_results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for order, tax_data in zip(chunk, chunk_results):
-            # Если в конкретной строке ошибка — скипаем её, а не весь файл
-            if isinstance(tax_data, Exception) or not tax_data:
-                continue
-            
-            # Валидация времени
-            order_time = order.timestamp if isinstance(order.timestamp, datetime) else datetime.now()
+    try:
+        all_tax_data = await calculate_bulk_taxes(orders_list)
+    except Exception as e:
+        print(f"Ошибка в bulk-обработке: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-            new_id = len(orders_db) + 1
-            processed_order = {
-                "id": new_id,
-                "latitude": order.latitude,
-                "longitude": order.longitude,
-                "subtotal": order.subtotal,
-                "timestamp": order_time,
-                "composite_tax_rate": tax_data["composite_tax_rate"],
-                "tax_amount": tax_data["tax_amount"],
-                "total_amount": tax_data["total_amount"],
-                "state_rate": tax_data["breakdown"]["state_rate"],
-                "county_rate": tax_data["breakdown"]["county_rate"],
-                "city_rate": tax_data["breakdown"]["city_rate"],
-                "special_rates": tax_data["breakdown"]["special_rates"],
-                "jurisdictions": ", ".join(tax_data["jurisdictions"])
-            }
-            orders_db.append(processed_order)
-            results.append(processed_order)
+    final_results = []
+    for order_obj, tax_data in zip(orders, all_tax_data):
+        order_time = order_obj.timestamp if isinstance(order_obj.timestamp, datetime) else datetime.now()
         
-        # прогресс в консоль раз в 1000 строк
-        if (i + chunk_size) % 1000 == 0 or i + chunk_size >= len(orders):
-            print(f"Прогресс: {min(i + chunk_size, len(orders))} из {len(orders)}")
+        processed_order = {
+            "id": len(orders_db) + 1,
+            "latitude": order_obj.latitude,
+            "longitude": order_obj.longitude,
+            "subtotal": order_obj.subtotal,
+            "timestamp": order_time,
+            **tax_data,
+            "state_rate": tax_data["breakdown"]["state_rate"],
+            "county_rate": tax_data["breakdown"]["county_rate"],
+            "city_rate": tax_data["breakdown"]["city_rate"],
+            "special_rates": tax_data["breakdown"]["special_rates"],
+            "jurisdictions": ", ".join(tax_data["jurisdictions"])
+        }
+        orders_db.append(processed_order)
+        final_results.append(processed_order)
 
-    print(f"--- Импорт завершен успешно. Всего заказов: {len(orders_db)} ---")
-    return results
+    duration = (datetime.now() - start_time).total_seconds()
+    print(f"--- Успешно! Обработано за {duration:.2f} сек. ---")
+    return final_results
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
-    
-    
-###########################################################################################
-#                                                                                         #
-#   ██████╗██╗   ██╗██████╗ ███████╗██████╗  ██████╗██╗  ██╗██╗   ██╗██████╗              #
-#  ██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██║   ██║██╔══██╗             #
-#  ██║      ╚████╔╝ ██████╔╝█████╗  ██████╔╝██║     ███████║██║   ██║██████╔╝             #
-#  ██║       ╚██╔╝  ██╔══██╗██╔══╝  ██╔══██╗██║     ██╔══██║██║   ██║██╔══██╗             #
-#  ╚██████╗   ██║   ██████╔╝███████╗██║  ██║╚██████╗██║  ██║╚██████╔╝██████╔╝             #
-#   ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝              #
-###########################################################################################
