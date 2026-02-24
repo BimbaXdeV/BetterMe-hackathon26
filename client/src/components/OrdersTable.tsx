@@ -150,33 +150,49 @@ export const OrdersTable = () => {
                       </td>
                     </tr>
 
-                    {expandedId === order.id && (
-                      <tr className="expanded-row bg-zinc-950/50 border-l-2 border-emerald-500/30">
-                        <td colSpan={7} className="px-5 py-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-[10px] font-mono">
-                            <div>
-                              <p className="text-zinc-600 uppercase mb-1">State Rate</p>
-                              <p className="text-zinc-300">{(order.breakdown.state_rate * 100).toFixed(3)}%</p>
-                            </div>
-                            <div>
-                              <p className="text-zinc-600 uppercase mb-1">County Rate</p>
-                              <p className="text-zinc-300">{(order.breakdown.county_rate * 100).toFixed(3)}%</p>
-                            </div>
-                            <div>
-                              <p className="text-zinc-600 uppercase mb-1">City/Special</p>
-                              <p className="text-zinc-300">{(order.breakdown.special_rates * 100).toFixed(3)}%</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
-                              <div>
-                                <p className="text-zinc-600 uppercase mb-1">Timestamp</p>
-                                <p className="text-zinc-300">{new Date(order.timestamp).toLocaleString()}</p>
+                    {/* Новая плавная строка детализации */}
+                    <tr className="bg-zinc-950/50">
+                      <td colSpan={7} className="p-0">
+                        <div
+                          className={`grid transition-all duration-300 ease-in-out ${
+                            expandedId === order.id
+                              ? 'grid-rows-[1fr] opacity-100'
+                              : 'grid-rows-[0fr] opacity-0'
+                          }`}
+                        >
+                          <div className="overflow-hidden">
+                            {/* Внутренняя обертка с рамкой и отступами */}
+                            <div className={`px-5 py-4 border-l-2 transition-colors duration-300 ${
+                              expandedId === order.id ? 'border-emerald-500/30' : 'border-transparent'
+                            }`}>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-[10px] font-mono">
+                                <div>
+                                  <p className="text-zinc-600 uppercase mb-1">State Rate</p>
+                                  <p className="text-zinc-300">{((order.breakdown?.state_rate || 0) * 100).toFixed(3)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-600 uppercase mb-1">County Rate</p>
+                                  <p className="text-zinc-300">{((order.breakdown?.county_rate || 0) * 100).toFixed(3)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-600 uppercase mb-1">City/Special</p>
+                                  <p className="text-zinc-300">{((order.breakdown?.special_rates || 0) * 100).toFixed(3)}%</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <div>
+                                    <p className="text-zinc-600 uppercase mb-1">Timestamp</p>
+                                    <p className="text-zinc-300">{new Date(order.timestamp).toLocaleString()}</p>
+                                  </div>
+                                </div>
                               </div>
+
                             </div>
                           </div>
-                        </td>
-                      </tr>
-                    )}
+                        </div>
+                      </td>
+                    </tr>
                   </React.Fragment>
                 ))
               )}

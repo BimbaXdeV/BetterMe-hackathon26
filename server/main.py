@@ -15,6 +15,12 @@ class Order(BaseModel):
     subtotal: float
     timestamp: Optional[Union[datetime, str]] = None
 
+class TaxBreakdown(BaseModel):
+    state_rate: float
+    county_rate: float
+    city_rate: float
+    special_rates: float
+
 class OrderResponse(Order):
     id: int
     composite_tax_rate: float
@@ -25,6 +31,7 @@ class OrderResponse(Order):
     city_rate: float
     special_rates: float
     jurisdictions: Optional[str] = None
+    breakdown: Optional[TaxBreakdown] = None
 
 # Модель для ответа с пагинацией
 class PaginatedOrdersResponse(BaseModel):
@@ -108,6 +115,7 @@ async def create_order(order: Order):
             "county_rate": tax_data["breakdown"]["county_rate"],
             "city_rate": tax_data["breakdown"]["city_rate"],
             "special_rates": tax_data["breakdown"]["special_rates"],
+            "breakdown": tax_data["breakdown"],
             "jurisdictions": ", ".join(tax_data["jurisdictions"])
         }
         orders_db.append(new_order_data)
@@ -144,6 +152,7 @@ async def create_orders_bulk(orders: List[Order]):
             "county_rate": tax_data["breakdown"]["county_rate"],
             "city_rate": tax_data["breakdown"]["city_rate"],
             "special_rates": tax_data["breakdown"]["special_rates"],
+            "breakdown": tax_data["breakdown"],
             "jurisdictions": ", ".join(tax_data["jurisdictions"])
         }
         orders_db.append(processed_order)
