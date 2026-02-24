@@ -18,7 +18,7 @@ function App() {
         total: response.data.total_revenue || 0
       });
     } catch (error) {
-      console.error('Ошибка статистики:', error);
+      console.error('Помилка статистики:', error);
     }
   };
 
@@ -43,18 +43,17 @@ function App() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-zinc-500 font-mono">System Active</span>
+            <span className="text-xs text-zinc-500 font-mono"></span>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Stats bar — staggered */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { label: 'Всего заказов', value: stats.count },
-            { label: 'Общий налог',   value: `$${stats.tax.toLocaleString()}` },
-            { label: 'Общая выручка', value: `$${stats.total.toLocaleString()}` },
+            { label: 'Всього замовлень', value: stats.count },
+            { label: 'Загальний податок',   value: `$${stats.tax.toLocaleString()}` },
+            { label: 'Загальна виручка', value: `$${stats.total.toLocaleString()}` },
           ].map((stat) => (
             <div key={stat.label} className="stat-card glow-card bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
               <p className="text-xs text-zinc-500 uppercase tracking-widest font-mono mb-1">{stat.label}</p>
@@ -63,7 +62,6 @@ function App() {
           ))}
         </div>
 
-        {/* Forms */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="form-card">
             <ImportCSV onSuccess={handleUpdate} />
@@ -73,7 +71,6 @@ function App() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="table-card">
           <OrdersTable key={refreshKey} />
         </div>

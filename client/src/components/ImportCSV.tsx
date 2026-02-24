@@ -5,7 +5,6 @@ import Papa from 'papaparse';
 import { toast } from 'sonner';
 
 interface Props {
-  // Вызывается после успешного импорта, чтобы обновить таблицу и сбросить ее на 1 страницу [cite: 28]
   onSuccess?: () => void; 
 }
 
@@ -63,11 +62,10 @@ export const ImportCSV = ({ onSuccess }: Props) => {
           }).filter(o => o.latitude !== 0);
 
           const total = formattedOrders.length;
-          if (total === 0) throw new Error("Файл пуст или неверные заголовки");
+          if (total === 0) throw new Error("Файл порожній або має невірні заголовки");
 
           setRowCount(total);
 
-          // Размер чанка увеличен до 5000 для оптимизированного бэкенда 
           const chunkSize = 5000; 
           for (let i = 0; i < total; i += chunkSize) {
             const chunk = formattedOrders.slice(i, i + chunkSize);
@@ -81,22 +79,21 @@ export const ImportCSV = ({ onSuccess }: Props) => {
             const remainingItems = total - currentUploaded;
             const secondsRemaining = Math.ceil((remainingItems * timePerItem) / 1000);
 
-            setTimeLeft(secondsRemaining > 0 ? `~${secondsRemaining} сек.` : 'финалим...');
+            setTimeLeft(secondsRemaining > 0 ? `~${secondsRemaining} сек.` : 'фіналізуємо...');
           }
 
-          toast.success('Импорт завершен', {
-            description: `${total} записей успешно обработано.`,
+          toast.success('Імпорт завершено', {
+            description: `${total} записів успішно оброблено.`,
             style: { background: '#18181b', color: '#10b981', border: '1px solid #065f46' }
           });
 
           setSuccess(true);
           setFile(null);
           
-          // Триггер для OrdersTable
           if (onSuccess) onSuccess(); 
 
         } catch (error: any) {
-          toast.error('Ошибка импорта', { description: error.message });
+          toast.error('Помилка імпорту', { description: error.message });
         } finally {
           setLoading(false);
           setTimeLeft('');
@@ -146,7 +143,7 @@ export const ImportCSV = ({ onSuccess }: Props) => {
             <UploadCloud className={`w-10 h-10 transition-colors ${dragging ? 'text-emerald-400' : 'text-emerald-900'}`} />
             <div>
               <p className="text-sm text-zinc-500">
-                Перетащи файл или <span className="text-emerald-500 hover:text-emerald-400 underline decoration-emerald-500/30">выбери путь</span>
+                Перетягніть файл або <span className="text-emerald-500 hover:text-emerald-400 underline decoration-emerald-500/30">виберіть шлях</span>
               </p>
             </div>
           </>

@@ -1,6 +1,7 @@
 import sys
 import os
 import asyncio
+import pandas as pd
 from datetime import datetime
 from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel
@@ -15,6 +16,12 @@ class Order(BaseModel):
     subtotal: float
     timestamp: Optional[Union[datetime, str]] = None
 
+class TaxBreakdown(BaseModel):
+    state_rate: float
+    county_rate: float
+    city_rate: float
+    special_rates: float
+
 class OrderResponse(Order):
     id: int
     composite_tax_rate: float
@@ -25,6 +32,7 @@ class OrderResponse(Order):
     city_rate: float
     special_rates: float
     jurisdictions: Optional[str] = None
+    breakdown: Optional[TaxBreakdown] = None
 
 # Модель для ответа с пагинацией
 class PaginatedOrdersResponse(BaseModel):
@@ -70,14 +78,37 @@ def root():
 @app.get('/orders', response_model=PaginatedOrdersResponse)
 async def get_orders(
     page: int = Query(1, ge=1, description="Номер страницы"),
-    limit: int = Query(50, ge=1, le=100, description="Количество заказов на страницу")
+    limit: int = Query(50, ge=1, le=100, description="Количество заказов на страницу"),
+    county: Optional[str] = None,
+    min_subtotal: Optional[float] = None,
+    min_tax: Optional[float] = None,
+    min_rate: Optional[float] = None
 ):
+    df = pd.DataFrame(orders_db)
+
+    # Создаем маску (набор условий)
+    mask = True
+
+    if None != county:
+        mask &= df['jurisdictions'].str.contains(county)
+    if None != min_subtotal:
+        mask &= df['subtotal'] >= min_subtotal
+    if None != min_tax:
+        mask &= df['tax_amount'] >= min_tax
+    if None != min_rate:
+        mask &= df['composite_tax_rate'] >= min_rate
+
+    try:
+        filtered_orders = df[mask].to_dict('records')
+    except:
+        filtered_orders = orders_db
+
     """Получение списка заказов с пагинацией."""
-    total_count = len(orders_db)
+    total_count = len(filtered_orders)
     start = (page - 1) * limit
     end = start + limit
     
-    paginated_items = orders_db[start:end]
+    paginated_items = filtered_orders[start:end]
     total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
 
     return {
@@ -108,6 +139,7 @@ async def create_order(order: Order):
             "county_rate": tax_data["breakdown"]["county_rate"],
             "city_rate": tax_data["breakdown"]["city_rate"],
             "special_rates": tax_data["breakdown"]["special_rates"],
+            "breakdown": tax_data["breakdown"],
             "jurisdictions": ", ".join(tax_data["jurisdictions"])
         }
         orders_db.append(new_order_data)
@@ -115,10 +147,10 @@ async def create_order(order: Order):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post('/orders/bulk', response_model=List[OrderResponse])
-async def create_orders_bulk(orders: List[Order]):
-    """Массовый импорт с использованием векторизации GeoPandas."""
-    print(f"--- Старт массового импорта: {len(orders)} строк ---")
+@app.post('/orders/import', response_model=List[OrderResponse])
+async def import_orders(orders: List[Order]):
+    
+    print(f"--- Старт импорта (ТЗ: /orders/import): {len(orders)} строк ---")
     start_time = datetime.now()
     
     orders_list = [o.dict() for o in orders]
@@ -133,24 +165,29 @@ async def create_orders_bulk(orders: List[Order]):
     for order_obj, tax_data in zip(orders, all_tax_data):
         order_time = order_obj.timestamp if isinstance(order_obj.timestamp, datetime) else datetime.now()
         
+        
         processed_order = {
             "id": len(orders_db) + 1,
             "latitude": order_obj.latitude,
             "longitude": order_obj.longitude,
             "subtotal": order_obj.subtotal,
             "timestamp": order_time,
-            **tax_data,
+            "composite_tax_rate": tax_data["composite_tax_rate"], 
+            "tax_amount": tax_data["tax_amount"],                
+            "total_amount": tax_data["total_amount"],           
+            "breakdown": tax_data["breakdown"],                  
             "state_rate": tax_data["breakdown"]["state_rate"],
             "county_rate": tax_data["breakdown"]["county_rate"],
             "city_rate": tax_data["breakdown"]["city_rate"],
             "special_rates": tax_data["breakdown"]["special_rates"],
+        
             "jurisdictions": ", ".join(tax_data["jurisdictions"])
         }
         orders_db.append(processed_order)
         final_results.append(processed_order)
 
     duration = (datetime.now() - start_time).total_seconds()
-    print(f"--- Успешно! Обработано за {duration:.2f} сек. ---")
+    print(f"--- Успешно! Импорт по ТЗ завершен за {duration:.2f} сек. ---")
     return final_results
 
 if __name__ == "__main__":

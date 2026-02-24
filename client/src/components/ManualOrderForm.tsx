@@ -22,16 +22,16 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const toastId = toast.loading('Рассчитываем налог и сохраняем...');
+    const toastId = toast.loading('Розраховуємо податок та зберігаємо...');
 
     try {
       const response = await axios.post('http://localhost:8000/orders', formData);
       setResult(response.data);
-      toast.success('Заказ успешно создан!', { id: toastId });
+      toast.success('Замовлення успішно створено!', { id: toastId });
       onSuccess?.();
     } catch (error) {
-      console.error('Ошибка:', error);
-      toast.error('Не удалось создать заказ. Проверьте соединение с API.', { id: toastId });
+      console.error('Помилка:', error);
+      toast.error('Не вдалося створити замовлення. Перевірте з\'єднання з API.', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
     <div className="glow-card bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
       <div className="flex items-center gap-2">
         <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md">02</span>
-        <h2 className="text-sm font-semibold text-zinc-300 tracking-wide uppercase">Ручное создание</h2>
+        <h2 className="text-sm font-semibold text-zinc-300 tracking-wide uppercase">Ручне створення</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -91,20 +91,20 @@ export const ManualOrderForm = ({ onSuccess }: Props) => {
           `}
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
-          {loading ? 'Расчёт...' : 'Рассчитать и сохранить'}
+          {loading ? 'Розрахунок...' : 'Розрахувати та зберегти'}
         </button>
       </form>
 
       {result && (
         <div className="expanded-row mt-2 rounded-lg bg-zinc-800/80 border border-zinc-700 overflow-hidden">
           <div className="px-4 py-2 border-b border-zinc-700 bg-zinc-800">
-            <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Результат расчёта</p>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Результат розрахунку</p>
           </div>
           <div className="grid grid-cols-3 divide-x divide-zinc-700">
             {[
               { label: 'Ставка', value: `${((result.composite_tax_rate || 0) * 100).toFixed(3)}%` },
-              { label: 'Налог',  value: `$${(result.tax_amount || 0).toFixed(2)}` },
-              { label: 'Итого', value: `$${(result.total_amount || 0).toFixed(2)}` },
+              { label: 'Податок',  value: `$${(result.tax_amount || 0).toFixed(2)}` },
+              { label: 'Разом', value: `$${(result.total_amount || 0).toFixed(2)}` },
             ].map((item) => (
               <div key={item.label} className="px-4 py-3 text-center">
                 <p className="text-xs text-zinc-500 font-mono mb-1">{item.label}</p>
