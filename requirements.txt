@@ -1,0 +1,6 @@
+pandas~=3.0.1
+uvicorn~=0.41.0
+pydantic~=2.12.5
+fastapi~=0.131.0
+geopandas~=1.1.2
+shapely~=2.1.2
