@@ -1,0 +1,16 @@
+Index: server/auth.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/server/auth.py b/server/auth.py
+--- a/server/auth.py	(revision bd6e6c2cd920ffb9f07444ef0c690b1198b5f27c)
++++ b/server/auth.py	(date 1771962601712)
+@@ -1,0 +1,6 @@
++async def verification (login: str, password: str):
++
++    if password == "zalupa" and login == "konya":
++        return {'content':'zaebennyi ty muzhik'}
++    else:
++        return {'content':'idi nahui'}
+\ No newline at end of file

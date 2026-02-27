@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Sora', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  @apply bg-zinc-950 text-zinc-100 antialiased;
+  font-family: 'Sora', sans-serif;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-zinc-900; }
+::-webkit-scrollbar-thumb { @apply bg-zinc-700 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-emerald-500; }
+input:focus { outline: none; }
+
+/* ─── Keyframes ─────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; max-height: 0; transform: translateY(-6px); }
+  to   { opacity: 1; max-height: 200px; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ─── Page load: staggered reveals ─────────────────────── */
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease both;
+}
+
+/* Stats cards */
+.stat-card {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.15s; }
+.stat-card:nth-child(3) { animation-delay: 0.25s; }
+
+/* Forms */
+.form-card:nth-child(1) { animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
+.form-card:nth-child(2) { animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both; }
+
+/* Table */
+.table-card {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+/* Table rows stagger */
+.table-row { animation: fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.table-row:nth-child(1)  { animation-delay: 0.02s; }
+.table-row:nth-child(2)  { animation-delay: 0.04s; }
+.table-row:nth-child(3)  { animation-delay: 0.06s; }
+.table-row:nth-child(4)  { animation-delay: 0.08s; }
+.table-row:nth-child(5)  { animation-delay: 0.10s; }
+.table-row:nth-child(6)  { animation-delay: 0.12s; }
+.table-row:nth-child(7)  { animation-delay: 0.14s; }
+.table-row:nth-child(8)  { animation-delay: 0.16s; }
+.table-row:nth-child(9)  { animation-delay: 0.18s; }
+.table-row:nth-child(10) { animation-delay: 0.20s; }
+.table-row:nth-child(11) { animation-delay: 0.22s; }
+.table-row:nth-child(12) { animation-delay: 0.24s; }
+.table-row:nth-child(13) { animation-delay: 0.26s; }
+.table-row:nth-child(14) { animation-delay: 0.28s; }
+.table-row:nth-child(15) { animation-delay: 0.30s; }
+
+/* Expanded breakdown row */
+.expanded-row {
+  animation: slide-down 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
+}
+
+/* ─── Button glow ───────────────────────────────────────── */
+.btn-glow {
+  transition: box-shadow 0.2s ease, transform 0.15s ease, background-color 0.2s ease;
+}
+.btn-glow:hover:not(:disabled) {
+  box-shadow: 0 0 22px rgba(16,185,129,0.45);
+  transform: translateY(-1px);
+}
+.btn-glow:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ─── Input focus glow ──────────────────────────────────── */
+.input-glow {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-glow:focus {
+  border-color: rgb(16,185,129) !important;
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+}
+
+/* ─── Card hover glow ───────────────────────────────────── */
+.glow-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+.glow-card:hover {
+  border-color: rgba(16,185,129,0.25) !important;
+  box-shadow: 0 0 28px rgba(16,185,129,0.08);
+  transform: translateY(-1px);
+}
+
+/* ─── Shimmer skeleton ──────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Pagination buttons ────────────────────────────────── */
+.page-btn {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.page-btn:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(16,185,129,0.25);
+  transform: scale(1.08);
+}
+
+/* ─── Custom Checkbox BetterMe Style ────────────────────── */
+.custom-checkbox {
+  @apply appearance-none w-5 h-5 border-2 border-zinc-700 rounded bg-zinc-900/50 
+         cursor-pointer transition-all duration-200 inline-grid place-content-center;
+  border-color: rgba(16, 185, 129, 0.4); /* Полупрозрачный emerald */
+}
+
+.custom-checkbox:hover {
+  @apply border-emerald-500/60 bg-zinc-800;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.custom-checkbox:checked {
+  @apply bg-emerald-500 border-emerald-500;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.custom-checkbox::before {
+  content: "";
+  @apply w-2.5 h-2.5 scale-0 transition-transform duration-200 bg-zinc-950;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.custom-checkbox:checked::before {
+  @apply scale-100;
+}
+
+.custom-checkbox:focus {
+  @apply outline-none ring-2 ring-emerald-500/20;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
